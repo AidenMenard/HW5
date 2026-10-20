@@ -1,11 +1,9 @@
 
 import requests
 
-# Student key
 student_key = input("Student key: ")
 seed = sum(ord(ch) for ch in student_key.strip())
 
-# Determine reorder threshold
 if seed % 3 == 0:
     threshold = 15
 elif seed % 3 == 1:
@@ -13,65 +11,48 @@ elif seed % 3 == 1:
 else:
     threshold = 9
 
-# Start inventory counters
 total_skus = 0
 reorder_count = 0
 
-# Enter inventory items
 while True:
     sku = input("SKU: ").strip()
 
     if sku.upper() == "DONE":
         break
-
     if sku == "":
         print("SKU cannot be blank.")
         continue
 
-    # Ask for inventory quantity
     while True:
         try:
             on_hand = int(input("On hand: "))
-
             if on_hand >= 0:
                 break
-            else:
-                print("On hand cannot be negative.")
-
+            print("Quantity cannot be negative.")
         except ValueError:
-            print("Please enter a whole number.")
+            print("Enter a whole number.")
 
-    # Count the SKU
     total_skus = total_skus + 1
 
-    # Determine if reorder is needed
     if on_hand < threshold:
-        print(sku, "- REORDER")
         reorder_count = reorder_count + 1
+        print(sku, "- REORDER")
     else:
         print(sku, "- OK")
 
-
-# Choose API search term
 if seed % 2 == 0:
-    search_term = "weezer"
+    term = "weezer"
 else:
-    search_term = "drake"
-
-# API information
-url = "https://itunes.apple.com/search"
-
-parameters = {
-    "entity": "song",
-    "limit": 5,
-    "term": search_term
-}
+    term = "drake"
 
 songs_returned = "N/A"
 
-# Connect to the iTunes API
 try:
-    response = requests.get(url, params=parameters, timeout=10)
+    response = requests.get(
+        "https://itunes.apple.com/search",
+        params={"term": term, "entity": "song", "limit": 5},
+        timeout=10
+    )
     response.raise_for_status()
 
 except requests.exceptions.RequestException:
@@ -80,33 +61,27 @@ except requests.exceptions.RequestException:
 else:
     try:
         data = response.json()
-        results = data["results"]
+        songs = data["results"]
 
-        if not isinstance(results, list):
-            raise ValueError()
+        if type(songs) == list:
+            count = 0
 
-        song_count = 0
+            for song in songs:
+                if song.get("kind") == "song":
+                    count = count + 1
 
-        # Count the songs
-        for item in results:
-            if not isinstance(item, dict):
-                raise ValueError()
+            songs_returned = count
+            api_status = "OK"
+        else:
+            api_status = "INVALID_RESPONSE"
 
-            if item.get("kind") == "song":
-                song_count = song_count + 1
-
-        songs_returned = song_count
-        api_status = "OK"
-
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, AttributeError):
         api_status = "INVALID_RESPONSE"
 
-
-# Print final results
 print("Seed:", seed)
 print("Threshold:", threshold)
 print("SKUs entered:", total_skus)
 print("Reorder flagged:", reorder_count)
-print("Spotcheck term:", search_term)
+print("Spotcheck term:", term)
 print("Songs returned:", songs_returned)
 print("API status:", api_status)
